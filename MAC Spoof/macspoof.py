@@ -11,7 +11,7 @@ mac = "0c:54:15:43:cb:5a"
 
 
 def macspoof(ip, mac):
-	p = Ether(src=mac) / IP(dst=ip) / ICMP()
+	p = Ether(src=mac) / IP(dst=ip) / ICMP()  # create an ICMP echo request packet
 	print("PING {} with MAC {}".format(ip, mac))
 	while True:
 		try:
